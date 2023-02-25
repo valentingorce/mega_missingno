@@ -1,5 +1,5 @@
 """Utility functions for missingno."""
-from pyspark.sql.functions import sort_array, array, col, sum, when, size
+from pyspark.sql.functions import sort_array, array, col, isnan
 
 
 def nullity_sort(df, sort=None, axis='columns'):
@@ -58,18 +58,19 @@ def nullity_filter(df, filter=None, p=0, n=0):
     """
     if filter == 'top':
         if p:
-            row_counts = sum(when(col(c).isNotNull(), 1).otherwise(0) for c in df.columns) # Count non-null values in each column
-            selected_cols = [c for c in df.columns if row_counts[c]/size(df) >= p] # Select columns with non-null count >= threshold
+            df_count = df.count()
+            selected_cols = [c for c in df.columns if df.where((col(c).isNotNull() & ~isnan(c))).count()/df_count >= p]
             df = df.select(*selected_cols)
         if n:
-            sorted_cols = sorted(df.columns, key=lambda c: df.where(col(c).isNotNull()).count(), reverse=True)[:n]
+            sorted_cols = sorted(df.columns, key=lambda c: df.where((col(c).isNotNull() & ~isnan(c))).count(), reverse=True)[:n]
             df = df.select(*[col(c) for c in sorted_cols])
             # maybe use approxQuantile?
     elif filter == 'bottom':
         if p:
-            sorted_cols = [c for c in df.columns if df.where(col(c).isNotNull()).count() / df.count() <= p]
-            df = df.select(*[col(c) for c in sorted_cols])
+            df_count = df.count()
+            selected_cols = [c for c in df.columns if df.where((col(c).isNotNull() & ~isnan(c))).count()/df_count <= p]
+            df = df.select(*selected_cols)
         if n:
-            sorted_cols = sorted(df.columns, key=lambda x: df.where(col(x).isNotNull()).count())[:n]
+            sorted_cols = sorted(df.columns, key=lambda c: df.where((col(c).isNotNull() & ~isnan(c))).count())[:n]
             df = df.select(*[col(c) for c in sorted_cols])
     return df
