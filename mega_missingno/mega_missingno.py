@@ -110,6 +110,7 @@ def matrix(
 
     # Adds Timestamps ticks if freq is not None, else set up the two top-bottom row ticks.
     if freq:
+        raise NotImplementedError()
         ts_list = []
 
         if type(df.index) == pd.PeriodIndex:
